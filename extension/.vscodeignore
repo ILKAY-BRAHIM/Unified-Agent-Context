@@ -1,0 +1,10 @@
+# Keep the published .vsix small: ship only what runs (out/, media/) + docs.
+src/**
+test/**
+node_modules/**
+.vscode/**
+tsconfig*.json
+src/webview/tsconfig.json
+**/*.map
+**/*.ts
+.gitignore

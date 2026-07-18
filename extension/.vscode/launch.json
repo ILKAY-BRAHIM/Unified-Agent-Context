@@ -1,0 +1,30 @@
+{
+  // Pressing F5 in a Remote-SSH window launches the Extension Development Host
+  // on the SAME remote host — the extension, the CLIs and your code all stay on
+  // one machine. Nothing extra is needed for that, but the paths below must
+  // exist wherever you're connected, which is why the portable config is first.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "npm: compile"
+    },
+    {
+      // Local convenience: opens a project that has memories and skills already.
+      // Won't exist on a remote — use "Run Extension" there and open a folder.
+      "name": "Run Extension (open Interviewer)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/../../Interviewer"
+      ],
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "npm: compile"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  // Lives next to the webview sources so VS Code's TS server resolves each file
+  // to the right project: it walks up from a file to the nearest tsconfig. With
+  // both configs in the extension root, driver.ts was being matched against this
+  // one — which has `types: []` — and lost its Node types in the editor.
+  "compilerOptions": {
+    "module": "none",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "outDir": "../../out/webview",
+    "rootDir": ".",
+    "sourceMap": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "types": []
+  },
+  "include": ["**/*.ts"]
+}

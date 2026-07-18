@@ -1,0 +1,14 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-linecap="round">
+  <!-- the uac chip, enlarged to fill the toolbar slot; colored for both themes -->
+  <g stroke-width="1.5">
+    <path d="M9 5.5 L7.8 2.2" stroke="#9aa2ad"/><path d="M15 5.5 L16.2 2.2" stroke="#9aa2ad"/>
+    <path d="M5.5 9 L2.2 7.8" stroke="#9aa2ad"/><path d="M5.5 15 L2.2 16.2" stroke="#9aa2ad"/>
+    <path d="M18.5 9 L21.8 7.8" stroke="#9aa2ad"/><path d="M18.5 15 L21.8 16.2" stroke="#9aa2ad"/>
+    <path d="M9 18.5 L7.8 21.8" stroke="#FFBE91"/><path d="M15 18.5 L16.2 21.8" stroke="#CFEBFF"/>
+  </g>
+  <rect x="5.5" y="5.5" width="13" height="13" rx="3.2" fill="#FFBE91" stroke="#16171d" stroke-width="1.6"/>
+  <g stroke="#a85f1a" stroke-width="1.1">
+    <path d="M9.83 6.7 L9.83 17.3"/><path d="M14.17 6.7 L14.17 17.3"/>
+    <path d="M6.7 9.83 L17.3 9.83"/><path d="M6.7 14.17 L17.3 14.17"/>
+  </g>
+</svg>

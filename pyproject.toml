@@ -1,0 +1,44 @@
+[project]
+name = "unified-agent-context"
+version = "0.1.1"
+description = "Shared memory and skills across Claude Code and Codex"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ibrahim Chifour", email = "ibrahimchifour@gmail.com" }]
+keywords = ["claude", "codex", "agent", "memory", "context", "cli", "mcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "fastmcp>=2.0",
+    "tomlkit>=0.13",
+    "pyyaml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://uac-ai.com"
+Repository = "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context"
+Issues = "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+uac = "uac.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uac"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

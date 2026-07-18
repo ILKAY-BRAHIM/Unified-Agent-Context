@@ -1,0 +1,27 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# --- Node / VS Code extension ---
+node_modules/
+extension/out/
+*.vsix
+
+# --- Astro build cache ---
+.astro/
+
+# --- The website app: deployed separately, not part of this repo ---
+site/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+*.swp

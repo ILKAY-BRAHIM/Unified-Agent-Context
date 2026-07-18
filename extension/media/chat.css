@@ -1,0 +1,884 @@
+/*
+ * Agent chat.
+ *
+ * Every colour comes from a VS Code theme token so this belongs in the editor
+ * instead of fighting it. The two agent hues use --vscode-charts-*, which is the
+ * token family VS Code ships for categorical distinction — they adapt to any
+ * theme, light or dark, including high contrast.
+ *
+ * The rail is the one bold move: a coloured line down the whole turn, so which
+ * agent did what is readable at a glance and a handoff between them is a visible
+ * shape. Everything else stays quiet.
+ */
+
+:root {
+  /* uac brand: peach for Claude, sky for Codex. The pastels read well on the
+     dark editor themes most people use; on light themes they'd be too faint, so
+     deepen them there (VS Code stamps vscode-light on <body>). */
+  --claude: #ffbe91;
+  --codex: #cfebff;
+  --rail-width: 2px;
+  --gutter: 14px;
+}
+body.vscode-light {
+  --claude: #c96a2c;
+  --codex: #2f74c0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* The `hidden` attribute is enforced by a UA rule (`[hidden] { display: none }`)
+   that any id/class selector setting `display` silently beats — so an element
+   we thought was hidden renders anyway. This wins over both. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* The log is the only thing that scrolls; the page itself is fixed to the
+     panel. Without this a stray scrollbar can appear over the composer. */
+  overflow: hidden;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+/* No header: the panel's title is already in the VS Code tab, and the agent
+   picker moved into the composer where the choice is actually made. A title bar
+   here would be a second label for the same thing. */
+
+/* --- log ------------------------------------------------------------------ */
+
+#log {
+  flex: 1;
+  overflow-y: auto;
+  /* Explicit: with overflow-y set, CSS computes overflow-x from `visible` to
+     `auto`, so one wide tool line would give the whole log a horizontal
+     scrollbar. Wide content scrolls inside its own block (figure.code) instead. */
+  overflow-x: hidden;
+  padding: 14px 12px 20px;
+}
+
+.empty {
+  max-width: 46ch;
+  margin: 12vh auto 0;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.6;
+}
+
+.empty__logo { display: block; margin: 0 auto 14px; }
+
+.empty b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+/* Your prompt. `›` echoes the CLI these agents actually are. Your own words are
+   worth reading back, so they get the foreground colour — not the muted grey of
+   a caption. */
+.you {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 18px var(--gutter);
+  color: var(--vscode-foreground);
+}
+
+.you::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-focusBorder);
+}
+
+.you-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* Stays out of the way until you go looking for it. */
+.you .edit {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.you:hover .edit,
+.you .edit:focus-visible {
+  opacity: 1;
+}
+
+.you .edit:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--vscode-panel-border);
+}
+
+/* --- a turn: the unit of work, spine of the design ------------------------ */
+
+.turn {
+  position: relative;
+  padding: 0 0 18px var(--gutter);
+  margin-bottom: 6px;
+}
+
+.turn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 18px;
+  width: var(--rail-width);
+  border-radius: 1px;
+  background: var(--agent, var(--vscode-panel-border));
+}
+
+.turn[data-agent="claude-code"] {
+  --agent: var(--claude);
+}
+.turn[data-agent="codex"] {
+  --agent: var(--codex);
+}
+
+.turn.streaming::before {
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.turn > header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.who {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--agent);
+}
+
+.status {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- the answer ----------------------------------------------------------- */
+/* Prose is what the agent SAID. It gets the reading font, full width, and no
+   chrome — everything else in a turn is subordinate to it. */
+
+.prose {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  margin: 2px 0 10px;
+}
+
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 8px;
+}
+
+.prose > *:last-child {
+  margin-bottom: 0;
+}
+
+.prose h4 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 18px;
+}
+
+.prose li {
+  margin-bottom: 3px;
+}
+
+.prose a {
+  color: var(--vscode-textLink-foreground);
+}
+
+.prose code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.16));
+}
+
+/* --- code blocks ---------------------------------------------------------- */
+
+figure.code {
+  margin: 8px 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
+}
+
+figure.code figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px 3px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+figure.code pre {
+  margin: 0;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+figure.code code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.5;
+  background: none;
+  padding: 0;
+}
+
+button.copy {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+button.copy:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--vscode-panel-border);
+}
+
+/* --- the working ----------------------------------------------------------
+ * What the agent DID, as opposed to what it said. Deliberately a different
+ * object on the page: indented behind its own rule, monospace, dimmed, and
+ * folded away once the answer lands. A turn is often forty greps around two
+ * paragraphs — flat, the answer drowns in its own footnotes.
+ */
+
+.activity {
+  margin: 2px 0 10px;
+  padding-left: 10px;
+  border-left: 1px dashed var(--vscode-panel-border);
+}
+
+.activity summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  user-select: none;
+}
+
+.activity summary:hover {
+  color: var(--vscode-foreground);
+}
+
+.activity summary::marker {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Open while it works, so you can watch; the label says which state you're in. */
+.activity[open] summary .steps::after {
+  content: " — working";
+  opacity: 0.7;
+}
+
+.turn:not(.streaming) .activity[open] summary .steps::after {
+  content: "";
+}
+
+/* --- machine events: terminal vernacular ---------------------------------- */
+
+/* One line per action, so a turn's work reads as a scannable log rather than
+   pages of shell. Click any line to see the whole thing. */
+.event {
+  display: flex;
+  gap: 8px;
+  padding: 1px 4px 1px 0;
+  border-radius: 3px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.event:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.1));
+}
+
+.event .marker {
+  flex: none;
+  width: 1ch;
+  color: var(--agent);
+  opacity: 0.8;
+}
+
+.event .body {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event.open .body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.event.reasoning,
+.event.other {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.event.shell .body {
+  color: var(--vscode-foreground);
+}
+
+/* Reading, searching, delegating: the agent working, not talking. Present but
+   subordinate to the prose. */
+.event.tool .body {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Errors are not activity to skim past: they get room and they don't collapse. */
+.event.error {
+  cursor: default;
+}
+
+.event.error .body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.event.file_change .body {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground, var(--vscode-foreground));
+}
+
+.event.error {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-style: normal;
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+  background: var(--vscode-inputValidation-errorBackground, transparent);
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+}
+
+.empty .hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+kbd {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+  padding: 1px 4px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+}
+
+/* --- composer -------------------------------------------------------------
+ * One input card, with its settings in the footer — the choice you're about to
+ * make lives with the thing you're about to send, not in a bar across the top.
+ * The card's border carries the agent's colour, so it reads as the start of the
+ * turn it will create.
+ */
+
+#composer {
+  position: relative;
+  flex: none;
+  padding: 10px 12px 12px;
+}
+
+#composer .box {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  background: var(--vscode-input-background);
+  transition: border-color 0.12s ease;
+}
+
+#composer .box:focus-within {
+  border-color: var(--agent, var(--vscode-focusBorder));
+}
+
+#composer[data-agent="claude-code"] {
+  --agent: var(--claude);
+}
+#composer[data-agent="codex"] {
+  --agent: var(--codex);
+}
+
+#composer .footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 6px;
+}
+
+/* Drop target: the whole card lights up, so there's no small bullseye to hit. */
+#composer.dropping .box {
+  border-color: var(--agent, var(--vscode-focusBorder));
+  border-style: dashed;
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.1));
+}
+
+/* --- attached files -------------------------------------------------------
+ * Cards, not a wall of paths. The badge is brand-coloured by extension rather
+ * than a real logo: the CSP blocks external images, VS Code doesn't expose its
+ * file-icon theme to webviews, and vendoring trademarked marks for one badge
+ * isn't a trade worth making. Colour + extension is recognisable at a glance.
+ */
+
+#files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 6px 0;
+}
+
+#files:empty {
+  display: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 22ch;
+  padding: 2px 4px 2px 5px;
+  font-size: 11px;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.file .ext {
+  flex: none;
+  padding: 0 3px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-radius: 2px;
+  /* Falls back to plain foreground when a type has no brand colour. */
+  color: var(--c, var(--vscode-descriptionForeground));
+  background: color-mix(in srgb, var(--c, transparent) 18%, transparent);
+}
+
+.file .fname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file .x {
+  flex: none;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.file .x:hover {
+  color: var(--vscode-foreground);
+}
+
+/* The same cards, echoed back on the message you sent. */
+.you-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.file.mini {
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+/* --- footer controls ------------------------------------------------------ */
+/* Settings, not the subject: quiet until you reach for them. The row reads
+   left-to-right as: add things · commands · how this turn will behave · send. */
+
+#controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+button.icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button.icon:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.14));
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 16ch;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chip span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.14));
+}
+
+/* Something other than the CLI default is in force for this turn — say so in
+   the agent's own colour, so it's visible without being read. */
+.chip.set {
+  color: var(--agent, var(--vscode-foreground));
+}
+
+.chip .glyph {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+/* --- effort ---------------------------------------------------------------
+ * One button that steps up the scale and wraps at the top. The dots are a
+ * readout of where you are on it — an ordered scale is worth seeing, but it
+ * isn't worth five click targets.
+ */
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dots:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.14));
+}
+
+.dots-label {
+  margin-right: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+.dots.set .dots-label {
+  color: var(--agent, var(--vscode-foreground));
+}
+
+.dots .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground);
+  opacity: 0.32;
+  transition: opacity 0.1s ease, background-color 0.1s ease;
+}
+
+.dots:hover .dot {
+  opacity: 0.5;
+}
+
+.dots .dot.on {
+  background: var(--agent, var(--vscode-foreground));
+  opacity: 1;
+}
+
+/* --- popup menu ----------------------------------------------------------- */
+
+#menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 240px;
+  max-width: 340px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--vscode-menu-background, var(--vscode-editorSuggestWidget-background));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
+}
+
+#menu .row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  text-align: left;
+  font: inherit;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#menu .row:hover {
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
+}
+
+#menu .row.on .label::after {
+  content: " ✓";
+  color: var(--agent, var(--vscode-foreground));
+}
+
+#menu .label {
+  font-size: 12px;
+}
+
+#menu .desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* --- / palette ------------------------------------------------------------ */
+
+#palette {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% - 8px);
+  z-index: 5;
+  overflow: hidden;
+  background: var(--vscode-editorSuggestWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorSuggestWidget-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+#palette .row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+#palette .row.on {
+  background: var(--vscode-editorSuggestWidget-selectedBackground, var(--vscode-list-activeSelectionBackground));
+}
+
+#palette .name {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  color: var(--vscode-editorSuggestWidget-foreground, var(--vscode-foreground));
+}
+
+#palette .hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+#palette .name {
+  flex: none;
+}
+
+/* Your own skills, shared across both agents — the reason this panel exists. */
+#palette .row .kind:not(:empty) {
+  margin-left: auto;
+}
+
+#palette .hint {
+  font-family: var(--vscode-editor-font-family);
+}
+
+#palette .kind {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+#input {
+  resize: none;
+  min-height: 42px;
+  max-height: 220px;
+  padding: 8px 10px 4px;
+  font: inherit;
+  line-height: 1.5;
+  color: var(--vscode-input-foreground);
+  background: none;
+  border: none;
+  /* The prompt wraps, so it never needs to scroll sideways — and a scrollbar
+     track here reads as a stray line across the card. Vertical scrolling only
+     kicks in past max-height, since the box grows with the text. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* The card shows focus; a second ring inside it is noise. */
+#input:focus {
+  outline: none;
+}
+
+#composer #agent:focus,
+#controls select:focus,
+button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+#input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+/* The send button carries the agent's colour: the button you press is the same
+   colour as the rail of the turn it creates. */
+#send {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--vscode-editor-background);
+  background: var(--agent, var(--vscode-button-background));
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+
+#send:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+#send:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Stopping is not the happy path: it reads as an interruption, not an action
+   in the agent's colour. */
+#send.stop {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.22));
+  font-size: 9px;
+}
+
+/* The agent picker lives in the footer now — the most important choice of the
+   turn, sitting with the rest of them. */
+#composer #agent {
+  flex: none;
+  margin-left: 2px;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--agent, var(--vscode-foreground));
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#composer #agent:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.14));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

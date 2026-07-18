@@ -1,0 +1,199 @@
+{
+  "name": "unified-agent-context",
+  "displayName": "Unified Agent Context",
+  "description": "Chat with Claude Code and Codex over one shared memory layer. No API key — drives the CLIs you already pay for.",
+  "version": "0.1.4",
+  "publisher": "ilkay-brahim",
+  "license": "MIT",
+  "icon": "media/icon-128.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "codex",
+    "agent",
+    "memory",
+    "context",
+    "cli"
+  ],
+  "homepage": "https://uac-ai.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context/issues"
+  },
+  "galleryBanner": {
+    "color": "#FFBE91",
+    "theme": "light"
+  },
+  "main": "./out/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "uac",
+          "title": "Agent Context",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "uac": [
+        {
+          "id": "uacMemories",
+          "name": "Shared Memory",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Shared Memory"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "uacMemories",
+        "contents": "No shared memories yet.\n\nClaude Code and Codex save what they learn here, and both can read it.\n\n[Open Agent Chat](command:uac.openChat)\n[Add a memory by hand](command:uac.addMemory)\n\nIf this looks wrong, check that `uac` is on your PATH and that you have run `uac init` in this project."
+      }
+    ],
+    "commands": [
+      {
+        "command": "uac.openChat",
+        "title": "Open Chat",
+        "category": "Agent Context",
+        "icon": {
+          "light": "media/panel-icon.svg",
+          "dark": "media/panel-icon.svg"
+        }
+      },
+      {
+        "command": "uac.refreshMemories",
+        "title": "Refresh",
+        "category": "Agent Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "uac.addMemory",
+        "title": "Add Memory",
+        "category": "Agent Context",
+        "icon": "$(add)"
+      },
+      {
+        "command": "uac.forgetMemory",
+        "title": "Delete Memory",
+        "category": "Agent Context",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "uac.attachFile",
+        "title": "Attach to Agent Chat",
+        "category": "Agent Context",
+        "icon": "$(add)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "uac.openChat",
+          "when": "view == uacMemories",
+          "group": "navigation@1"
+        },
+        {
+          "command": "uac.addMemory",
+          "when": "view == uacMemories",
+          "group": "navigation@2"
+        },
+        {
+          "command": "uac.refreshMemories",
+          "when": "view == uacMemories",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "uac.forgetMemory",
+          "when": "view == uacMemories && viewItem == uacMemory",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "uac.forgetMemory",
+          "when": "false"
+        },
+        {
+          "command": "uac.attachFile",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "uac.openChat",
+          "group": "navigation@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "uac.attachFile",
+          "group": "6_copypath@10"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "uac.attachFile",
+          "group": "1_close@10"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Unified Agent Context",
+      "properties": {
+        "uac.defaultAgent": {
+          "type": "string",
+          "enum": [
+            "claude-code",
+            "codex"
+          ],
+          "default": "claude-code",
+          "description": "Which agent new chats start with."
+        },
+        "uac.claudePath": {
+          "type": "string",
+          "default": "claude",
+          "description": "Path to the Claude Code CLI."
+        },
+        "uac.codexPath": {
+          "type": "string",
+          "default": "codex",
+          "description": "Path to the Codex CLI."
+        },
+        "uac.cliPath": {
+          "type": "string",
+          "default": "uac",
+          "description": "Path to the uac CLI (used to read and write shared memory)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p . && tsc -p src/webview",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,46 @@
+[project]
+name = "uac-tui"
+version = "0.1.1"
+description = "Full-screen terminal chat for Claude Code and Codex over one shared memory layer."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ibrahim Chifour", email = "ibrahimchifour@gmail.com" }]
+keywords = ["claude", "codex", "agent", "tui", "terminal", "chat"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+# A separate app from the VS Code extension: pick whichever front-end you like.
+# It shares only the uac CORE (memory, skills, hooks) — never the extension's
+# code, and never its own copy of the memory store.
+dependencies = [
+    "unified-agent-context>=0.1.0",
+    "textual>=8.0",
+]
+
+[project.urls]
+Homepage = "https://uac-ai.com"
+Repository = "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context"
+Issues = "https://github.com/ILKAY-BRAHIM/Unified-Agent-Context/issues"
+
+[project.scripts]
+uac-chat = "uac_tui.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uac_tui"]
+
+[tool.hatch.metadata]
+# Lets the local `unified-agent-context` be resolved from the sibling checkout.
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
