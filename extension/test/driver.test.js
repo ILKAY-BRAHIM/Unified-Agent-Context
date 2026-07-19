@@ -319,6 +319,22 @@ test("model choice survives a resumed turn", () => {
   assert.strictEqual(cmd[cmd.indexOf("--model") + 1], "haiku");
 });
 
+test("codex resume omits exec-only flags (--sandbox, --model)", () => {
+  // `codex exec resume` rejects --sandbox and --model; the model is carried
+  // through -c instead, and the sandbox is inherited from the session.
+  const cmd = codex().command("next", "thread-1", { model: "gpt-5", sandbox: "workspace-write" });
+  assert.deepStrictEqual(cmd.slice(0, 3), ["exec", "resume", "thread-1"]);
+  assert.ok(!cmd.includes("--sandbox"), "resume must not pass --sandbox");
+  assert.ok(!cmd.includes("--model"), "resume must not pass --model");
+  assert.ok(cmd.includes(`model="gpt-5"`), "model should be set via -c on resume");
+});
+
+test("codex initial turn still sets --sandbox and --model", () => {
+  const cmd = codex().command("go", undefined, { model: "gpt-5", sandbox: "workspace-write" });
+  assert.strictEqual(cmd[cmd.indexOf("--sandbox") + 1], "workspace-write");
+  assert.strictEqual(cmd[cmd.indexOf("--model") + 1], "gpt-5");
+});
+
 // --- effort, verified live against each CLI ---------------------------------
 
 test("claude effort values match what the CLI reports as valid", () => {

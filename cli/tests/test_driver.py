@@ -99,6 +99,21 @@ def test_codex_resumes_with_the_session_id():
     assert cmd[:4] == ["codex", "exec", "resume", "thread-1"]
 
 
+def test_codex_resume_omits_exec_only_flags():
+    # `codex exec resume` rejects --sandbox and --model; the model is carried
+    # through -c instead, and the sandbox is inherited from the session.
+    cmd = codex().command("next", "thread-1", {"model": "gpt-5", "sandbox": "workspace-write"})
+    assert "--sandbox" not in cmd
+    assert "--model" not in cmd
+    assert '-c' in cmd and 'model="gpt-5"' in cmd
+
+
+def test_codex_initial_turn_keeps_sandbox_and_model():
+    cmd = codex().command("hi", None, {"model": "gpt-5", "sandbox": "workspace-write"})
+    assert cmd[cmd.index("--sandbox") + 1] == "workspace-write"
+    assert cmd[cmd.index("--model") + 1] == "gpt-5"
+
+
 # --- codex model cache ------------------------------------------------------
 
 

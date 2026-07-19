@@ -447,18 +447,28 @@ export class CodexDriver implements Driver {
   }
 
   command(prompt: string, sessionId?: string, opts?: TurnOptions): string[] {
-    const flags = ["--json", "--sandbox", opts?.sandbox || this.approvals];
-    if (opts?.model) {
-      flags.push("--model", opts.model);
-    }
+    // `--json` and `-c` overrides are valid on both `codex exec` and
+    // `codex exec resume`. `--sandbox` and `--model` are ONLY valid on the
+    // initial `exec` — passing them to `resume` makes Codex reject the whole
+    // command ("unexpected argument '--sandbox'"). On a resumed turn the sandbox
+    // is inherited from the session and the model is set through `-c` instead.
+    const flags = ["--json"];
     if (opts?.effort) {
       // Codex has no --effort flag; reasoning effort is a config key, and -c
       // sets any of them. The value is TOML-parsed, hence the quotes.
       flags.push("-c", `model_reasoning_effort="${opts.effort}"`);
     }
-    return sessionId
-      ? ["exec", "resume", sessionId, ...flags, prompt]
-      : ["exec", ...flags, prompt];
+    if (sessionId) {
+      if (opts?.model) {
+        flags.push("-c", `model="${opts.model}"`);
+      }
+      return ["exec", "resume", sessionId, ...flags, prompt];
+    }
+    flags.push("--sandbox", opts?.sandbox || this.approvals);
+    if (opts?.model) {
+      flags.push("--model", opts.model);
+    }
+    return ["exec", ...flags, prompt];
   }
 
   controls(caps: Capabilities): Control[] {

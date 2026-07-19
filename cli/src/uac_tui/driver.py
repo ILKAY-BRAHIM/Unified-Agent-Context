@@ -298,13 +298,21 @@ class CodexDriver(Driver):
 
     def command(self, prompt, session_id, opts=None) -> list[str]:
         opts = opts or {}
-        flags = ["--json", "--sandbox", opts.get("sandbox") or self.approvals]
-        if opts.get("model"):
-            flags += ["--model", opts["model"]]
+        # `--json` and `-c` overrides are valid on both `codex exec` and
+        # `codex exec resume`. `--sandbox`/`--model` are ONLY valid on the
+        # initial `exec` — passing them to `resume` makes Codex reject the whole
+        # command. On a resumed turn the sandbox is inherited from the session
+        # and the model is set through `-c` instead.
+        flags = ["--json"]
         if opts.get("effort"):
             flags += ["-c", f'model_reasoning_effort="{opts["effort"]}"']
         if session_id:
+            if opts.get("model"):
+                flags += ["-c", f'model="{opts["model"]}"']
             return [self.binary, "exec", "resume", session_id, *flags, prompt]
+        flags += ["--sandbox", opts.get("sandbox") or self.approvals]
+        if opts.get("model"):
+            flags += ["--model", opts["model"]]
         return [self.binary, "exec", *flags, prompt]
 
     def parse(self, obj) -> list[Event]:
